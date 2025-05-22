@@ -1,0 +1,624 @@
+Kotlin Annotations and Reflection: Complete Explanation
+=====================================================
+
+This document provides a complete explanation of Kotlin Annotations and Reflection, tailored for a beginner with experience in Kotlin basics, OOP, design patterns, collections, functional programming, coroutines, generics, and Java, interested in Android development. It covers creating and using annotations for metadata and using reflection to inspect classes, properties, and methods at runtime with KClass, KProperty, and related APIs. The explanation includes the corrected AnnotationsReflectionDemo.kt code, addressing errors ("Unresolved reference: findAnnotation", "Unresolved reference: memberProperties", "error with import full"), setup instructions for IntelliJ IDEA, code flow, troubleshooting, key terms, Java comparisons, Android use cases, and next steps. It builds on your TaskManager console app experience and aligns with Stage 1: Advanced Kotlin Concepts in your learning roadmap.
+
+1. What Are Annotations and Reflection?
+--------------------------------------
+
+**Annotations**:
+- **Definition**: Annotations are metadata tags applied to code elements (classes, functions, properties) to provide additional information, processed at compile-time or runtime.
+- **Why Use?**: Enable configuration, validation, or marking code for frameworks (e.g., Room, Retrofit in Android).
+- **Java Equivalent**: Java annotations (e.g., @Override, @Deprecated), but Kotlin’s annotations support flexible targets and retention policies.
+- **Use Case**: Marking a Task class for serialization or validation.
+- **From Your Knowledge**: Relates to metadata in design patterns and Java annotations.
+
+**Reflection**:
+- **Definition**: Reflection allows inspecting and manipulating code structure (classes, properties, methods) at runtime using Kotlin’s reflection API (kotlin-reflect).
+- **Why Use?**: Enables dynamic behavior, such as reading annotations or accessing properties, useful in testing, serialization, or dependency injection.
+- **Java Equivalent**: Java reflection (Class, Field, Method), but Kotlin’s API is type-safe and integrates with Kotlin properties.
+- **Use Case**: Dynamically validating annotated Task properties in a ViewModel.
+- **From Your Knowledge**: Builds on generics (KClass<T>) and functional programming (lambdas).
+
+2. Creating and Using Annotations
+---------------------------------
+
+**Creating Annotations**:
+- **Definition**: Define an annotation class with @Target (where it applies) and @Retention (when it’s available).
+- **Syntax**:
+  ```kotlin
+  @Target(AnnotationTarget.CLASS, AnnotationTarget.PROPERTY)
+  @Retention(AnnotationRetention.RUNTIME)
+  annotation class TaskInfo(val description: String, val priority: Int = 0)
+  ```
+- **Key Annotations**:
+  - @Target: Specifies valid targets (e.g., AnnotationTarget.CLASS, AnnotationTarget.PROPERTY).
+  - @Retention: Defines availability:
+    - SOURCE: Compile-time only (e.g., @Suppress).
+    - BINARY: In bytecode, not runtime.
+    - RUNTIME: Available at runtime for reflection (most common for reflection).
+- **Java Equivalent**:
+  ```java
+  @Target({ElementType.TYPE, ElementType.FIELD})
+  @Retention(RetentionPolicy.RUNTIME)
+  public @interface TaskInfo {
+      String description();
+      int priority() default 0;
+  }
+  ```
+- **Use Case**: Annotating a Room entity or Retrofit query parameter.
+
+**Using Annotations**:
+- **Definition**: Apply annotations to code elements to add metadata.
+- **Syntax**:
+  ```kotlin
+  @TaskInfo(description = "Task class", priority = 1)
+  data class Task(
+      @TaskInfo(description = "Task ID", priority = 2)
+      val id: Int
+  )
+  ```
+- **Processing**: Use reflection to read annotations at runtime or tools (e.g., annotation processors) at compile-time.
+- **Example**:
+  ```kotlin
+  val annotation = Task::class.findAnnotation<TaskInfo>()
+  println(annotation?.description) // Task class
+  ```
+- **Use Case**: Marking ViewModel properties for validation or serialization.
+
+3. Reflection with KClass, KProperty, and More
+---------------------------------------------
+
+**Reflection Overview**:
+- Kotlin’s reflection API (kotlin-reflect) provides type-safe inspection of code structure.
+- Key classes:
+  - KClass<T>: Represents a class (like Java’s Class<T>).
+  - KProperty<*> : Represents a property (like Java’s Field).
+  - KFunction<*> : Represents a function (like Java’s Method).
+- Requires dependency: implementation("org.jetbrains.kotlin:kotlin-reflect:1.9.23").
+- Common errors (e.g., "Unresolved reference: findAnnotation, memberProperties", "error with import full") occur if this dependency is missing or Gradle isn’t synced.
+
+**KClass**:
+- **Definition**: Represents a Kotlin class, providing access to annotations, properties, functions, etc.
+- **Key Properties/Methods**:
+  - simpleName: Class name (e.g., "Task").
+  - findAnnotation<T>(): Gets an annotation of type T.
+  - memberProperties: List of properties.
+  - functions: List of functions.
+- **Example**:
+  ```kotlin
+  val taskClass: KClass<Task> = Task::class
+  println(taskClass.simpleName) // Task
+  ```
+- **Java Equivalent**: Class<?>:
+  ```java
+  Class<?> taskClass = Task.class;
+  System.out.println(taskClass.getSimpleName());
+  ```
+
+**KProperty**:
+- **Definition**: Represents a property, providing access to its name, annotations, and getter.
+- **Key Properties/Methods**:
+  - name: Property name (e.g., "id").
+  - findAnnotation<T>(): Gets an annotation.
+  - getter: Invokes the property’s getter.
+- **Example**:
+  ```kotlin
+  val property = Task::class.memberProperties.first()
+  println(property.name) // id
+  ```
+- **Java Equivalent**: Field:
+  ```java
+  Field field = Task.class.getDeclaredFields()[0];
+  System.out.println(field.getName());
+  ```
+
+**KFunction**:
+- **Definition**: Represents a function, providing access to its name, parameters, etc.
+- **Example**:
+  ```kotlin
+  val function = Task::class.functions.first()
+  println(function.name) // toString
+  ```
+- **Java Equivalent**: Method:
+  ```java
+  Method method = Task.class.getDeclaredMethods()[0];
+  System.out.println(method.getName());
+  ```
+
+**findAnnotation<T>**:
+- **Definition**: Retrieves an annotation of type T from a KClass, KProperty, or KFunction.
+- **Example**:
+  ```kotlin
+  val annotation = Task::class.findAnnotation<TaskInfo>()
+  ```
+
+**Error Handling**:
+- Reflection can throw exceptions (e.g., IllegalAccessException) if properties are inaccessible.
+- Use try-catch for robustness:
+  ```kotlin
+  try {
+      val value = property.getter.call(task)
+  } catch (e: Exception) {
+      println("Error: ${e.message}")
+  }
+  ```
+
+**Troubleshooting Import Errors**:
+- **Errors**:
+  - "Unresolved reference: findAnnotation"
+  - "Unresolved reference: memberProperties"
+  - "error with import full"
+- **Cause**: Missing `kotlin-reflect` dependency or Gradle sync failure, preventing resolution of `kotlin.reflect.full.*`.
+- **Fix**:
+  - Add to `build.gradle.kts`:
+    ```kotlin
+    dependencies {
+        implementation("org.jetbrains.kotlin:kotlin-reflect:1.9.23")
+    }
+    ```
+  - Sync Gradle: Click "Sync Project with Gradle Files" or run `./gradlew build`.
+  - Clear caches: File > Invalidate Caches / Restart.
+  - Verify imports:
+    ```kotlin
+    import kotlin.reflect.full.findAnnotation
+    import kotlin.reflect.full.memberProperties
+    import kotlin.reflect.full.functions
+    ```
+  - Check file path matches package: `src/main/kotlin/AdvancedKotlin/AnnotationsReflection`.
+
+4. Corrected Example: AnnotationsReflectionDemo.kt
+-------------------------------------------------
+
+The corrected AnnotationsReflectionDemo.kt (package AdvancedKotlin.AnnotationsReflection) is a console app simulating a task management system, demonstrating annotations and reflection with fixes for all reported errors.
+
+**Code**:
+```kotlin
+package AdvancedKotlin.AnnotationsReflection
+
+import kotlin.reflect.KClass
+import kotlin.reflect.KProperty
+import kotlin.reflect.full.findAnnotation
+import kotlin.reflect.full.memberProperties
+import kotlin.reflect.full.functions
+
+// Custom annotation for task metadata
+@Target(AnnotationTarget.CLASS, AnnotationTarget.PROPERTY)
+@Retention(AnnotationRetention.RUNTIME)
+annotation class TaskInfo(
+    val description: String,
+    val priority: Int = 0
+) {
+    /*
+     * Annotations Context:
+     * - @TaskInfo annotates classes or properties with metadata (description, priority).
+     * - @Target: Specifies valid targets (classes, properties).
+     * - @Retention(RUNTIME): Ensures annotation is available at runtime for reflection.
+     * - Java Equivalent: Java annotation with @Target(ElementType.TYPE, ElementType.FIELD) and @Retention(RetentionPolicy.RUNTIME).
+     * - From Your Knowledge: Aligns with metadata concepts in design patterns.
+     * - Android Relevance: Similar to Room’s @Entity or Retrofit’s @Query annotations.
+     */
+}
+
+// Data class for a task, using annotations
+@TaskInfo(description = "Represents a task in the system", priority = 1)
+data class Task(
+    @TaskInfo(description = "Unique task ID", priority = 2)
+    val id: Int,
+    @TaskInfo(description = "Task title", priority = 1)
+    var title: String,
+    @TaskInfo(description = "Task priority", priority = 3)
+    var priority: Int
+) {
+    /*
+     * Annotations Context:
+     * - Task class and properties are annotated with @TaskInfo for metadata.
+     * - From Your Knowledge: Data classes for immutability (with mutable fields for demo).
+     * - Android Relevance: Represents to-do items in a ViewModel or Room database.
+     */
+}
+
+// Class to demonstrate creating and using annotations
+class AnnotationDemo {
+    /*
+     * Annotations: Creating and Using Annotations
+     * - Definition: Annotations add metadata to code elements, processed at compile-time or runtime.
+     * - Why Important? Enables configuration, validation, or marking for frameworks (e.g., Android’s Room).
+     * - Java Equivalent: Java annotations (e.g., @Override), but Kotlin supports flexible targets.
+     * - Use Case: Marking ViewModel properties for serialization or validation.
+     * - From Your Knowledge: Relates to metadata in design patterns and Java annotations.
+     */
+    
+    fun demonstrate() {
+        println("=== Annotation Demo ===")
+        val task = Task(1, "Write code", 1)
+        println("Created task: $task")
+        // Note: Annotation processing is shown in ReflectionDemo
+    }
+}
+
+// Class to demonstrate reflection with KClass, KProperty
+class ReflectionDemo {
+    /*
+     * Reflection: Inspecting Classes, Properties, and Methods
+     * - Definition: Reflection inspects code structure (classes, properties, methods) at runtime using KClass, KProperty, etc.
+     * - Why Important? Enables dynamic behavior, such as reading annotations or accessing properties.
+     * - Java Equivalent: Java reflection (Class, Field), but Kotlin’s API is type-safe.
+     * - Use Case: Dynamically validating annotated properties in a ViewModel.
+     * - From Your Knowledge: Builds on generics (KClass<T>) and functional programming (lambdas).
+     * - Dependency: Requires `kotlin-reflect` (org.jetbrains.kotlin:kotlin-reflect:1.9.23) in build.gradle.kts.
+     */
+    
+    fun demonstrate() {
+        println("\n=== Reflection Demo ===")
+        
+        // Get KClass for Task
+        val taskClass: KClass<Task> = Task::class
+        println("Class: ${taskClass.simpleName}")
+        
+        // Inspect class annotations
+        val classAnnotation = taskClass.findAnnotation<TaskInfo>()
+        println("Class Annotation: description=${classAnnotation?.description}, priority=${classAnnotation?.priority}")
+        
+        // Create a Task instance
+        val task = Task(1, "Write code", 1)
+        
+        // Inspect properties using reflection with error handling
+        taskClass.memberProperties.forEach { property: KProperty<*> ->
+            val annotation = property.findAnnotation<TaskInfo>()
+            try {
+                val value = property.getter.call(task)
+                println("Property: ${property.name}, Value: $value, Annotation: description=${annotation?.description}, priority=${annotation?.priority}")
+            } catch (e: Exception) {
+                println("Error accessing property ${property.name}: ${e.message}")
+            }
+        }
+        
+        // Inspect functions
+        taskClass.functions.forEach { function ->
+            println("Function: ${function.name}, Parameters: ${function.parameters.map { it.name ?: "unnamed" }}")
+        }
+    }
+}
+
+// Main class to orchestrate annotations and reflection demos
+class MainDemo {
+    /*
+     * Annotations and Reflection Context:
+     * - Combines annotation creation and reflection inspection in a task management scenario.
+     * - Java Equivalent: A main class using Java annotations and reflection.
+     * - From Your Knowledge: Leverages OOP (classes) and functional programming (lambdas).
+     * - Android Relevance: Simulates inspecting ViewModel properties.
+     */
+    
+    fun demonstrateAll() {
+        println("=== Annotations and Reflection Demo ===")
+        AnnotationDemo().demonstrate()
+        ReflectionDemo().demonstrate()
+    }
+}
+
+// Main function to run the demo
+fun main() {
+    /*
+     * Annotations and Reflection Context:
+     * - Entry point for the console app, running all demos.
+     * - Java Equivalent: `public static void main(String[] args)`.
+     * - Dependency: Ensure `kotlin-reflect` is in build.gradle.kts to resolve `kotlin.reflect.full.*`.
+     */
+    MainDemo().demonstrateAll()
+}
+```
+
+**Setup Requirements**:
+- **Dependency**: Add to `build.gradle.kts`:
+  ```kotlin
+  plugins {
+      kotlin("jvm") version "1.9.23"
+  }
+  repositories {
+      mavenCentral()
+  }
+  dependencies {
+      implementation(kotlin("stdlib"))
+      implementation("org.jetbrains.kotlin:kotlin-reflect:1.9.23") // Required for kotlin.reflect.full
+  }
+  ```
+- **Imports**: Explicit imports to resolve `kotlin.reflect.full.*`:
+  ```kotlin
+  import kotlin.reflect.full.findAnnotation
+  import kotlin.reflect.full.memberProperties
+  import kotlin.reflect.full.functions
+  ```
+- **File Location**: Place in `src/main/kotlin/AdvancedKotlin/AnnotationsReflection`.
+
+**Flow Step-by-Step**:
+1. **Program Starts**:
+   - `main()` creates a `MainDemo` instance and calls `demonstrateAll()`:
+     ```kotlin
+     fun main() {
+         MainDemo().demonstrateAll()
+     }
+     ```
+   - Output: === Annotations and Reflection Demo ===
+
+2. **Annotation Demo**:
+   - `demonstrateAll()` calls `AnnotationDemo().demonstrate()`:
+     ```kotlin
+     AnnotationDemo().demonstrate()
+     ```
+   - Creates a `Task` instance with `@TaskInfo` annotations:
+     ```kotlin
+     val task = Task(1, "Write code", 1)
+     println("Created task: $task")
+     ```
+   - Output:
+     ```
+     === Annotation Demo ===
+     Created task: Task(id=1, title=Write code, priority=1)
+     ```
+
+3. **Reflection Demo**:
+   - `demonstrateAll()` calls `ReflectionDemo().demonstrate()`:
+     ```kotlin
+     ReflectionDemo().demonstrate()
+     ```
+   - Steps:
+     - Gets `KClass` for `Task`:
+       ```kotlin
+       val taskClass: KClass<Task> = Task::class
+       println("Class: ${taskClass.simpleName}")
+       ```
+       - Output: Class: Task
+     - Reads class-level `@TaskInfo`:
+       ```kotlin
+       val classAnnotation = taskClass.findAnnotation<TaskInfo>()
+       println("Class Annotation: description=${classAnnotation?.description}, priority=${classAnnotation?.priority}")
+       ```
+       - Output: Class Annotation: description=Represents a task in the system, priority=1
+     - Creates a `Task` instance:
+       ```kotlin
+       val task = Task(1, "Write code", 1)
+       ```
+     - Iterates over properties:
+       ```kotlin
+       taskClass.memberProperties.forEach { property: KProperty<*> ->
+           val annotation = property.findAnnotation<TaskInfo>()
+           try {
+               val value = property.getter.call(task)
+               println("Property: ${property.name}, Value: $value, Annotation: description=${annotation?.description}, priority=${annotation?.priority}")
+           } catch (e: Exception) {
+               println("Error accessing property ${property.name}: ${e.message}")
+           }
+       }
+       ```
+       - Output:
+         ```
+         Property: id, Value: 1, Annotation: description=Unique task ID, priority=2
+         Property: priority, Value: 1, Annotation: description=Task priority, priority=3
+         Property: title, Value: Write code, Annotation: description=Task title, priority=1
+         ```
+     - Lists functions:
+       ```kotlin
+       taskClass.functions.forEach { function ->
+           println("Function: ${function.name}, Parameters: ${function.parameters.map { it.name ?: "unnamed" }}")
+       }
+       ```
+       - Output (partial):
+         ```
+         Function: toString, Parameters: [unnamed]
+         Function: copy, Parameters: [unnamed, id, title, priority]
+         ...
+         ```
+
+4. **Program Ends**:
+   - `demonstrateAll()` completes.
+
+**Full Output** (as of May 22, 2025, 7:43 PM IST):
+```
+=== Annotations and Reflection Demo ===
+=== Annotation Demo ===
+Created task: Task(id=1, title=Write code, priority=1)
+
+=== Reflection Demo ===
+Class: Task
+Class Annotation: description=Represents a task in the system, priority=1
+Property: id, Value: 1, Annotation: description=Unique task ID, priority=2
+Property: priority, Value: 1, Annotation: description=Task priority, priority=3
+Property: title, Value: Write code, Annotation: description=Task title, priority=1
+Function: toString, Parameters: [unnamed]
+Function: copy, Parameters: [unnamed, id, title, priority]
+Function: component1, Parameters: [unnamed]
+Function: component2, Parameters: [unnamed]
+Function: component3, Parameters: [unnamed]
+...
+```
+
+5. Setup and Running in IntelliJ IDEA
+------------------------------------
+
+**Steps**:
+1. **Verify Project Setup**:
+   - Use an existing Gradle-based Kotlin project or create a new one:
+     - File > New > Project > Kotlin > Console Application > Gradle (Kotlin DSL).
+     - Name: e.g., AnnotationsReflectionDemo.
+     - JDK: Java 11 or later.
+     - Kotlin version: 1.9.23.
+   - Update `build.gradle.kts`:
+     ```kotlin
+     plugins {
+         kotlin("jvm") version "1.9.23"
+     }
+     repositories {
+         mavenCentral()
+     }
+     dependencies {
+         implementation(kotlin("stdlib"))
+         implementation("org.jetbrains.kotlin:kotlin-reflect:1.9.23")
+     }
+     ```
+   - Sync Gradle:
+     - Click "Sync Project with Gradle Files" (elephant icon).
+     - Or run:
+       ```
+       cd path/to/project
+       ./gradlew build
+       ```
+
+2. **Add Code**:
+   - Create `AnnotationsReflectionDemo.kt` in `src/main/kotlin/AdvancedKotlin/AnnotationsReflection`:
+     - Right-click `src/main/kotlin` > New > Directory > AdvancedKotlin/AnnotationsReflection.
+     - Copy the code from Section 4 into `AnnotationsReflectionDemo.kt`.
+   - Verify package: `package AdvancedKotlin.AnnotationsReflection`.
+
+3. **Add Text File**:
+   - Create `KotlinAnnotationsReflectionExplanation.txt` in `src/main/resources`.
+   - Copy this document’s content (without xaiArtifact tags).
+
+4. **Clear Caches**:
+   - File > Invalidate Caches / Restart > Invalidate and Restart.
+   - Reopen project and sync Gradle.
+
+5. **Run**:
+   - Open `AnnotationsReflectionDemo.kt`, click green "Run" button next to `main`.
+   - Or use Gradle:
+     ```
+     ./gradlew run
+     ```
+   - Or compile manually:
+     ```
+     kotlinc src/main/kotlin/AdvancedKotlin/AnnotationsReflection/AnnotationsReflectionDemo.kt -include-runtime -d AnnotationsReflectionDemo.jar
+     java -jar AnnotationsReflectionDemo.jar
+     ```
+
+6. **Verify**:
+   - No red underlines on `findAnnotation`, `memberProperties`, `kotlin.reflect.full.*`.
+   - Output matches Section 4.
+
+**Troubleshooting**:
+- **Error**: "error with import full", "Unresolved reference: findAnnotation, memberProperties".
+- **Fix**:
+  - Check `build.gradle.kts` for `kotlin-reflect`.
+  - Force Gradle refresh:
+    ```
+    ./gradlew cleanBuildCache
+    ./gradlew build --refresh-dependencies
+    ```
+  - Delete `.idea` and `.gradle`:
+    ```
+    rm -rf .idea .gradle
+    ```
+    Reopen IntelliJ and sync.
+  - Verify dependency in `~/.gradle/caches`.
+  - Disable Gradle offline mode: File > Settings > Build, Execution, Deployment > Build Tools > Gradle.
+- **Persistent Issues**:
+  - Share IntelliJ version (Help > About).
+  - Share full error log from Build tab or screenshot of editor.
+
+6. Android Relevance
+-------------------
+
+- **Annotations**:
+  - Room: @Entity, @ColumnInfo for database tables.
+  - Retrofit: @GET, @Query for API calls.
+  - Example:
+    ```kotlin
+    @Entity
+    data class Task(@ColumnInfo(name = "task_id") val id: Int)
+    ```
+- **Reflection**:
+  - Inspect ViewModel properties for validation or serialization.
+  - Example:
+    ```kotlin
+    class TaskViewModel : ViewModel() {
+        @TaskInfo(description = "Task title")
+        var title: String = ""
+    }
+    fun validate(viewModel: TaskViewModel) {
+        viewModel::class.memberProperties.forEach {
+            val annotation = it.findAnnotation<TaskInfo>()
+            if (annotation != null) println("${it.name}: ${annotation.description}")
+        }
+    }
+    ```
+
+7. Building on Your Knowledge
+-----------------------------
+
+- **OOP**: Annotations on classes/properties, reflection with classes.
+- **Functional Programming**: Lambdas in reflection (e.g., forEach).
+- **Generics**: KClass<T> uses generic types.
+- **Design Patterns**: Metadata patterns (annotations).
+- **Java**: Simplifies Java’s annotation and reflection APIs.
+- **TaskManager**: Extends your console app with metadata inspection.
+
+8. Next Steps
+-------------
+
+- **Practice**:
+  - Create a @Validate annotation:
+    ```kotlin
+    @Target(AnnotationTarget.PROPERTY)
+    @Retention(AnnotationRetention.RUNTIME)
+    annotation class Validate(val maxLength: Int)
+    fun validate(task: Task) {
+        task::class.memberProperties.forEach {
+            val validate = it.findAnnotation<Validate>()
+            if (validate != null && it.name == "title") {
+                try {
+                    val value = it.getter.call(task) as String
+                    if (value.length > validate.maxLength) println("Invalid: ${it.name}")
+                } catch (e: Exception) {
+                    println("Error: ${e.message}")
+                }
+            }
+        }
+    }
+    ```
+  - Add function annotation:
+    ```kotlin
+    @Target(AnnotationTarget.FUNCTION)
+    @Retention(AnnotationRetention.RUNTIME)
+    annotation class LogExecution
+    @LogExecution
+    fun processTask(task: Task) = println(task)
+    fun inspectFunction(kClass: KClass<*>) {
+        kClass.functions.forEach {
+            if (it.findAnnotation<LogExecution>() != null) println("Function ${it.name} is logged")
+        }
+    }
+    ```
+
+- **Android**:
+  - Create a Compose app:
+    ```kotlin
+    class TaskViewModel : ViewModel() {
+        @TaskInfo(description = "Task title")
+        var title: String by mutableStateOf("")
+    }
+    @Composable
+    fun TaskScreen(viewModel: TaskViewModel) {
+        val title by viewModel.titleFlow.collectAsState()
+        TextField(value = title, onValueChange = { viewModel.title = it })
+        Button(onClick = {
+            viewModel::class.memberProperties.forEach {
+                val annotation = it.findAnnotation<TaskInfo>()
+                if (annotation != null) println("${it.name}: ${annotation.description}")
+            }
+        }) {
+            Text("Inspect Annotations")
+        }
+    }
+    ```
+
+- **Roadmap**:
+  - Move to DSLs or sealed classes, combining with annotations/reflection.
+  - Explore Jetpack Compose for Android UI.
+
+9. Resources
+------------
+
+- Kotlin Annotations: https://kotlinlang.org/docs/annotations.html
+- Kotlin Reflection: https://kotlinlang.org/docs/reflection.html
+- IntelliJ IDEA Kotlin Guide: https://www.jetbrains.com/help/idea/kotlin.html
+- Kotlin Playground: https://play.kotlinlang.org/

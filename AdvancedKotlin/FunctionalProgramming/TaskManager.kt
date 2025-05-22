@@ -1,7 +1,7 @@
 package Kotlin.AdvancedKotlin.FunctionalProgramming
 
 // Class to demonstrate functional programming
-class TaskManager {
+open class TaskManager {
     /*
      * Class Context:
      * - Manages tasks using functional programming principles (immutability, declarative operations).
